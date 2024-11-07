@@ -1,0 +1,21 @@
+# 当工作区的配置文件被修改时，是否将键值对映射到对应插件的配置文件中
+workspace-to-plugin: true
+
+# 当对应插件的配置文件被修改时，是否将键值对映射到对应工作区的配置文件中
+plugin-to-workspace: true
+
+# 映射延迟多少毫秒进行， 因为部分编辑器可能会多次触发修改事件，所以需要延迟一段时间
+delay-ms: 200
+
+# 启动服务器时备份工作区
+backup-when-start: true
+
+# 关闭服务器时备份工作区
+backup-when-stop: true
+
+# 需要映射配置文件的插件
+plugin-names: []
+
+
+
+

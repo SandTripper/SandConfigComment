@@ -1,0 +1,14 @@
+name: SandConfigComment
+version: '${project.version}'
+main: cn.sandtripper.minecraft.sandconfigcomment.SandConfigComment
+api-version: '1.13'
+load: STARTUP
+loadbefore:
+  - Vault
+  - Essentials
+  - EssentialsX
+  - PlayerPoints
+  - ViaVersion
+  - LuckPerms
+  - ProtocolLib
+  - AuthMe
