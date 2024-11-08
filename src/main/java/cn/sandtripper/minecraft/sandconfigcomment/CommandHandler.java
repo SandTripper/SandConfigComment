@@ -22,7 +22,7 @@ public class CommandHandler extends BaseCommand {
     }
 
     @Subcommand("add")
-    @CommandCompletion("@all_plugin")
+    @CommandCompletion("@unwatched_plugin")
     public void onAddPlugin(CommandSender commandSender, String pluginName) {
         Plugin targetPlugin = plugin.getServer().getPluginManager().getPlugin(pluginName);
         if (targetPlugin == null) {
@@ -37,7 +37,7 @@ public class CommandHandler extends BaseCommand {
             commandSender.sendMessage(PLUGIN_PREFIX + "§e插件已在监视列表里");
             return;
         }
-        plugin.addWatchPlugin(pluginName);
+        plugin.addWatchPlugin(pluginName, true);
         commandSender.sendMessage(PLUGIN_PREFIX + "§7添加成功!");
     }
 

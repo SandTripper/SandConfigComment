@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 public final class SandConfigComment extends JavaPlugin {
@@ -41,9 +42,13 @@ public final class SandConfigComment extends JavaPlugin {
 
         BukkitCommandManager commandManager = new BukkitCommandManager(this);
         commandManager.enableUnstableAPI("help");
-        commandManager.getCommandCompletions().registerCompletion("all_plugin", c -> Arrays.asList(Arrays.stream(getServer().getPluginManager().getPlugins())
-                .map(Plugin::getName)
-                .toArray(String[]::new)));
+        commandManager.getCommandCompletions().registerCompletion("unwatched_plugin", c -> {
+            Set<String> watchedPlugins = new HashSet<>(ConfigValues.CONFIG.PLUGIN_NAMES);
+            return Arrays.asList(Arrays.stream(getServer().getPluginManager().getPlugins())
+                    .map(Plugin::getName)
+                    .filter(name -> !watchedPlugins.contains(name))
+                    .toArray(String[]::new));
+        });
         commandManager.getCommandCompletions().registerCompletion("watched_plugin", c -> ConfigValues.CONFIG.PLUGIN_NAMES);
         commandManager.registerCommand(new CommandHandler(this));
 
@@ -92,14 +97,12 @@ public final class SandConfigComment extends JavaPlugin {
         Set<String> sourceKeys = sourceSection.getKeys(false);
         Set<String> targetKeys = targetSection.getKeys(false);
 
-        // 删除目标配置文件中存在但源配置文件中不存在的键值对
         for (String key : targetKeys) {
             if (!sourceKeys.contains(key)) {
                 targetSection.set(key, null);
             }
         }
 
-        // 拷贝源配置文件中的键值对到目标配置文件
         for (String key : sourceKeys) {
             if (sourceSection.isConfigurationSection(key)) {
                 ConfigurationSection sourceSubSection = sourceSection.getConfigurationSection(key);
@@ -108,6 +111,7 @@ public final class SandConfigComment extends JavaPlugin {
                 }
                 ConfigurationSection targetSubSection = targetSection.getConfigurationSection(key);
                 copyConfigurationValues(sourceSubSection, targetSubSection);
+
             } else {
                 Object value = sourceSection.get(key);
                 if (!value.equals(targetSection.get(key)))
@@ -133,14 +137,11 @@ public final class SandConfigComment extends JavaPlugin {
 
     public void initWatchPlugin() {
         for (String pluginName : ConfigValues.CONFIG.PLUGIN_NAMES) {
-            Plugin plugin = getServer().getPluginManager().getPlugin(pluginName);
-            if (plugin == null)
-                return;
-            this.yamlWatcher.addWatchPlugin(pluginName);
+            addWatchPlugin(pluginName, false);
         }
     }
 
-    public void addWatchPlugin(String pluginName) {
+    public void addWatchPlugin(String pluginName, boolean addToConfig) {
         Plugin plugin = getServer().getPluginManager().getPlugin(pluginName);
         if (plugin == null)
             return;
@@ -150,8 +151,10 @@ public final class SandConfigComment extends JavaPlugin {
             e.printStackTrace();
         }
         this.yamlWatcher.addWatchPlugin(pluginName);
-        ConfigValues.CONFIG.PLUGIN_NAMES.add(pluginName);
-        ConfigValues.save(this);
+        if (addToConfig) {
+            ConfigValues.CONFIG.PLUGIN_NAMES.add(pluginName);
+            ConfigValues.save(this);
+        }
     }
 
     public void removeWatchPlugin(String pluginName) {
@@ -166,6 +169,7 @@ public final class SandConfigComment extends JavaPlugin {
             yamlWatcher.close(true);
         }
         yamlWatcher = new YamlWatcherUtil(this, filename -> fileChange(filename), ConfigValues.CONFIG.DELAY_MS);
+        configReaderHashMap.clear();
         initWatchPlugin();
     }
 
@@ -227,6 +231,11 @@ public final class SandConfigComment extends JavaPlugin {
                     if (!Files.exists(correspondingTargetFile)) {
                         Files.createDirectories(correspondingTargetFile.getParent());
                         Files.copy(sourceFile, correspondingTargetFile, StandardCopyOption.REPLACE_EXISTING);
+                    } else if (ConfigValues.CONFIG.PLUGIN_TO_WORKSPACE) {
+                        ConfigReader sourceConfigReader = saveGetConfigReader(sourceFile.toString());
+                        ConfigReader targetConfigReader = saveGetConfigReader(correspondingTargetFile.toString());
+                        copyConfigurationValues(sourceConfigReader.getConfig(), targetConfigReader.getConfig());
+                        targetConfigReader.saveConfig();
                     }
                 }
                 return FileVisitResult.CONTINUE;
